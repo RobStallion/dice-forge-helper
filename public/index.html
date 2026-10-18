@@ -1,55 +1,58 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" data-theme="light">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
-  <title>Dice Forge Companion — Dice, Sanctuary & Score Tracker</title>
+  <title>Dice Forge Companion</title>
   <link rel="stylesheet" href="/styles.css" />
 </head>
 <body>
   <!-- LOBBY VIEW -->
   <div id="lobby-screen" class="screen active">
+    <div class="lobby-topbar">
+      <button id="btn-theme-lobby" class="btn btn-icon" title="Switch Light / Dark Theme">🌙 Dark Mode</button>
+    </div>
     <div class="lobby-container">
       <div class="brand-header">
-        <div class="brand-emblem">⚡🎲🏛️</div>
+        <div class="brand-emblem">🏛️🎲</div>
         <h1>Dice Forge Companion</h1>
-        <p class="subtitle">Digital Dice Forging, Rolling &amp; Hero Inventory for the Physical Board Game</p>
+        <p class="subtitle">Dice Rolling, Sanctuary Forging &amp; Hero Inventory</p>
       </div>
 
       <div id="rejoin-banner" class="rejoin-banner hidden">
         <div>
-          <strong> Active Game Found:</strong> Room <span id="rejoin-code">----</span>
+          <strong>Active Game:</strong> Room <span id="rejoin-code">----</span>
         </div>
-        <button id="btn-rejoin" class="btn btn-gold btn-sm">Rejoin Game</button>
+        <button id="btn-rejoin" class="btn btn-gold btn-sm">Rejoin</button>
       </div>
 
       <div class="lobby-grid">
         <!-- Create Room Card -->
         <div class="card lobby-card">
-          <h2>🔥 Create New Game</h2>
-          <p class="card-desc">Start a room for your table (up to 4 players).</p>
+          <h2>🔥 Start New Game</h2>
+          <p class="card-desc">Create a room for up to 4 players at your table.</p>
           <div class="form-group">
             <label for="create-name">Your Hero Name</label>
             <input type="text" id="create-name" placeholder="e.g. Rob" maxlength="20" />
           </div>
           <div class="form-group">
-            <label>Player Count Setup (Sets Sanctuary Stock &amp; Rounds)</label>
+            <label>Player Count (Sets Sanctuary Stock)</label>
             <div class="segmented-control" id="setup-count-picker">
-              <button type="button" data-count="2" class="seg-btn">2 Players<small>2 faces/pool • 9 Rds</small></button>
-              <button type="button" data-count="3" class="seg-btn">3 Players<small>4 faces/pool • 10 Rds</small></button>
-              <button type="button" data-count="4" class="seg-btn active">4 Players<small>4 faces/pool • 9 Rds</small></button>
+              <button type="button" data-count="2" class="seg-btn">2P<small>2 faces/pool</small></button>
+              <button type="button" data-count="3" class="seg-btn">3P<small>4 faces/pool</small></button>
+              <button type="button" data-count="4" class="seg-btn active">4P<small>4 faces/pool</small></button>
             </div>
           </div>
           <div class="btn-stack">
-            <button id="btn-create-room" class="btn btn-gold btn-lg">Create Room &amp; Join as Hero 1</button>
-            <button id="btn-create-table" class="btn btn-outline">Create as Shared Table Display</button>
+            <button id="btn-create-room" class="btn btn-gold btn-lg">Create Room</button>
+            <button id="btn-create-table" class="btn btn-outline btn-sm">Create as Shared Table Screen</button>
           </div>
         </div>
 
         <!-- Join Room Card -->
         <div class="card lobby-card">
-          <h2>🏛️ Join Existing Room</h2>
-          <p class="card-desc">Enter the 4-letter code shown on the host’s screen.</p>
+          <h2>🏛️ Join Game</h2>
+          <p class="card-desc">Enter the 4-letter room code.</p>
           <div class="form-group">
             <label for="join-code">Room Code</label>
             <input type="text" id="join-code" class="code-input" placeholder="ABCD" maxlength="4" autocomplete="off" />
@@ -60,7 +63,7 @@
           </div>
           <div class="btn-stack">
             <button id="btn-join-room" class="btn btn-primary btn-lg">Join as Hero</button>
-            <button id="btn-join-table" class="btn btn-outline">Open Shared Table View</button>
+            <button id="btn-join-table" class="btn btn-outline btn-sm">Open Shared Table Screen</button>
           </div>
         </div>
       </div>
@@ -71,7 +74,7 @@
 
   <!-- GAME VIEW -->
   <div id="game-screen" class="screen">
-    <!-- Top Sticky Bar -->
+    <!-- Clean Consolidated Header -->
     <header class="topbar">
       <div class="topbar-left">
         <button id="btn-copy-room" class="room-badge" title="Tap to copy invite link">
@@ -81,69 +84,55 @@
         </button>
 
         <div class="round-pill">
-          <span class="round-label">ROUND</span>
-          <strong id="display-round">1 / 9</strong>
-          <span id="display-active-hero" class="active-hero-chip">Active: Hero 1</span>
+          <span id="display-round">Rd 1/9</span>
+          <span class="dot-sep">•</span>
+          <span id="display-active-hero" class="active-hero-text">Hero 1</span>
+          <button id="btn-next-turn" class="btn-inline-next" title="Advance to Next Player's Turn">Next ➡️</button>
         </div>
       </div>
 
-      <div class="topbar-center">
-        <button id="btn-divine-blessing" class="btn btn-blessing">
-          ⚡ Divine Blessing (Roll All)
-          <span id="blessing-count-badge" class="badge-pill">1x</span>
-        </button>
-        <button id="btn-next-turn" class="btn btn-secondary">
-          Next Turn ➡️
-        </button>
-      </div>
-
       <div class="topbar-right">
-        <button id="btn-open-sanctuary" class="btn btn-gold-outline">
-          🏛️ Sanctuary <span id="sanctuary-stock-badge" class="badge-pill">40</span>
-        </button>
-        <button id="btn-undo" class="btn btn-ghost" disabled title="Undo last action">
-          ↩️ Undo
-        </button>
-        <button id="btn-leave-room" class="btn btn-ghost" title="Back to Lobby">
-          🚪
-        </button>
+        <button id="btn-undo" class="btn btn-ghost btn-sm" disabled title="Undo last action">↩️ Undo</button>
+        <button id="btn-theme-toggle" class="btn btn-ghost btn-sm" title="Toggle Light / Dark Theme">🌙</button>
+        <button id="btn-setup-config" class="btn btn-ghost btn-sm" title="Game Setup & Reset">⚙️</button>
+        <button id="btn-leave-room" class="btn btn-ghost btn-sm" title="Exit to Lobby">🚪</button>
       </div>
     </header>
 
-    <!-- View Mode Switcher & Quick Controls Bar -->
-    <div class="subbar">
-      <div class="view-tabs">
-        <button id="tab-my-hero" class="tab-btn active">🛡️ Focused Hero View</button>
-        <button id="tab-table-view" class="tab-btn">🎲 All Heroes (Table View)</button>
-      </div>
+    <!-- Primary Action & Player Navigation Bar -->
+    <div class="action-nav-bar">
+      <div class="action-nav-inner">
+        <!-- Big Primary Roll All Button -->
+        <button id="btn-divine-blessing" class="btn btn-blessing">
+          <span class="blessing-icon">⚡</span>
+          <span>Divine Blessing <strong>(Roll All)</strong></span>
+          <span id="blessing-count-badge" class="badge-pill">1x</span>
+        </button>
 
-      <div class="player-selector-bar" id="focused-player-Select-wrap">
-        <span class="selector-label">Viewing / Controlling:</span>
-        <div id="hero-switcher-pills" class="hero-pills"></div>
-        <button id="btn-add-seat" class="btn btn-xs btn-outline" title="Add another Hero seat to the room">+ Add Hero</button>
-      </div>
-
-      <div class="table-actions">
-        <button id="btn-setup-config" class="btn btn-xs btn-ghost">⚙️ Setup / Reset</button>
+        <!-- Hero Switcher Tabs + Table View Toggle -->
+        <div class="nav-pills-wrap">
+          <div id="hero-switcher-pills" class="hero-pills"></div>
+          <button id="btn-add-seat" class="hero-pill add-hero-pill" title="Add another Hero">+ Hero</button>
+          <button id="btn-toggle-table-view" class="hero-pill table-view-pill" title="Compare all Heroes side-by-side">
+            👥 All Heroes
+          </button>
+        </div>
       </div>
     </div>
 
     <!-- Main Content Area -->
     <main class="game-main">
-      <!-- Scoreboard Strip (Always visible in Focused View so you can see everyone's rolls & resources) -->
-      <section id="scoreboard-strip" class="scoreboard-strip"></section>
-
-      <!-- Hero Cards Container (Either 1 focused hero or up to 4 heroes in Table View grid) -->
+      <!-- Hero Cards Container -->
       <section id="heroes-container" class="heroes-container"></section>
 
-      <!-- Activity Log Panel -->
-      <section class="log-panel card">
-        <div class="log-header">
-          <h3>📜 Divine Chronicle (Live Roll &amp; Forge Log)</h3>
-          <span class="log-hint">Newest events at top</span>
-        </div>
+      <!-- Collapsible Chronicle Log at Bottom -->
+      <details class="log-drawer card">
+        <summary class="log-summary">
+          <span>📜 <strong>Game Log</strong> <span id="latest-log-preview" class="latest-log-preview"></span></span>
+          <span class="log-toggle-hint">Tap to expand</span>
+        </summary>
         <div id="activity-log" class="activity-log"></div>
-      </section>
+      </details>
     </main>
   </div>
 
@@ -152,17 +141,16 @@
     <div class="modal-dialog modal-xl">
       <div class="modal-header">
         <div>
-          <h2>🔨 The Temple Sanctuary &amp; Gardens</h2>
-          <p class="modal-subtitle" id="forge-modal-subtitle">Select a die face to forge onto your Light or Dark Die</p>
+          <h2>🔨 Sanctuary &amp; Forging</h2>
+          <p class="modal-subtitle" id="forge-modal-subtitle">Select a die slot and choose a new face to forge</p>
         </div>
         <button id="btn-close-forge" class="btn-close" aria-label="Close">✕</button>
       </div>
 
       <div class="modal-body">
-        <!-- Step 1: Target Player & Die Slot Selector -->
         <div class="forge-target-bar">
           <div class="forge-target-group">
-            <label>Forging For Hero:</label>
+            <label>Hero:</label>
             <select id="forge-player-select" class="select-input"></select>
             <span id="forge-player-gold" class="gold-chip">🟡 0 Gold</span>
           </div>
@@ -170,11 +158,11 @@
           <div class="forge-options-group">
             <label class="checkbox-label">
               <input type="checkbox" id="forge-auto-pay" checked />
-              Auto-deduct Gold cost
+              Auto-pay Gold
             </label>
-            <label class="checkbox-label" title="Celestial Ship face or card effect">
+            <label class="checkbox-label" title="Celestial Ship -2 Gold discount">
               <input type="checkbox" id="forge-ship-discount" />
-              ⛵ -2 Gold Discount
+              ⛵ -2G Discount
             </label>
             <label class="checkbox-label" title="Bypass stock limits or replace Tenacious Boar if fixing a mistake">
               <input type="checkbox" id="forge-override-rule" />
@@ -183,22 +171,22 @@
           </div>
         </div>
 
-        <!-- Step 2: Choose Slot on Light or Dark Die -->
+        <!-- Step 1: Choose Slot on Light or Dark Die -->
         <div class="forge-dice-preview">
           <div class="forge-die-box">
-            <h4>☀️ Light Die (Tap slot to replace)</h4>
+            <h4>☀️ Light Die <small>(Tap face to replace)</small></h4>
             <div id="forge-light-slots" class="forge-slot-grid"></div>
           </div>
           <div class="forge-die-box">
-            <h4>🌙 Dark Die (Tap slot to replace)</h4>
+            <h4>🌙 Dark Die <small>(Tap face to replace)</small></h4>
             <div id="forge-dark-slots" class="forge-slot-grid"></div>
           </div>
         </div>
 
-        <!-- Step 3: Tabs for Sanctuary vs Gardens vs Custom -->
+        <!-- Step 2: Tabs for Sanctuary vs Gardens vs Custom -->
         <div class="modal-tabs">
-          <button type="button" class="modal-tab active" data-tab="sanctuary">🏛️ Sanctuary Pools (Buy with Gold)</button>
-          <button type="button" class="modal-tab" data-tab="gardens">🌿 The Gardens (Special Card Faces)</button>
+          <button type="button" class="modal-tab active" data-tab="sanctuary">🏛️ Sanctuary (Gold)</button>
+          <button type="button" class="modal-tab" data-tab="gardens">🌿 Gardens (Card Faces)</button>
           <button type="button" class="modal-tab" data-tab="custom">✨ Custom Face</button>
         </div>
 
@@ -207,16 +195,16 @@
         </div>
 
         <div id="forge-tab-gardens" class="forge-tab-content">
-          <p class="tab-note">These special faces come from Heroic Feat cards on the Islands board (Mirror of the Abyss, Helmet of Invisibility, Celestial Ship, Guardian’s Shield, Tenacious Boar).</p>
+          <p class="tab-note">Special faces unlocked by Heroic Feat cards on the Islands board.</p>
           <div id="gardens-faces-grid" class="gardens-faces-grid"></div>
         </div>
 
         <div id="forge-tab-custom" class="forge-tab-content">
           <div class="custom-face-form card">
-            <h4>Create &amp; Forge a Custom Die Face</h4>
+            <h4>Create a Custom Die Face</h4>
             <div class="custom-inputs-row">
               <div class="form-group">
-                <label>Face Label</label>
+                <label>Label</label>
                 <input type="text" id="custom-face-name" placeholder="e.g. 2 Gold + 2 Glory" />
               </div>
               <div class="form-group">
@@ -236,7 +224,7 @@
                 <input type="number" id="custom-face-glory" value="0" min="0" max="30" />
               </div>
             </div>
-            <button id="btn-forge-custom" class="btn btn-gold">Forge Custom Face onto Selected Slot</button>
+            <button id="btn-forge-custom" class="btn btn-gold">Forge Custom Face</button>
           </div>
         </div>
 
@@ -249,12 +237,12 @@
   <div id="setup-modal" class="modal-backdrop hidden">
     <div class="modal-dialog">
       <div class="modal-header">
-        <h2>⚙️ Game Setup &amp; Table Controls</h2>
+        <h2>⚙️ Game Setup &amp; Controls</h2>
         <button id="btn-close-setup" class="btn-close">✕</button>
       </div>
       <div class="modal-body">
         <div class="form-group">
-          <label>Change Player Count Setup (Resets Sanctuary Pool Stock)</label>
+          <label>Player Count Setup (Resets Sanctuary Stock)</label>
           <div class="btn-row">
             <button class="btn btn-outline btn-setup-count" data-count="2">2 Players (2 faces/pool)</button>
             <button class="btn btn-outline btn-setup-count" data-count="3">3 Players (4 faces/pool)</button>
@@ -263,8 +251,8 @@
         </div>
         <hr class="divider" />
         <div class="form-group">
-          <label>Reset All Dice &amp; Scores for a New Game</label>
-          <p class="card-desc">Restores all players in the room to their starting Light &amp; Dark dice, resets resources to starting Gold (3/2/1/0), and refills the Sanctuary.</p>
+          <label>Reset All Dice &amp; Scores</label>
+          <p class="card-desc">Restores all players to starting Light &amp; Dark dice, resets resources to starting Gold (3/2/1/0), and refills the Sanctuary.</p>
           <button id="btn-reset-game" class="btn btn-danger">🔄 Reset Entire Game to Round 1</button>
         </div>
       </div>
