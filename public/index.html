@@ -10,6 +10,7 @@
   <!-- LOBBY VIEW -->
   <div id="lobby-screen" class="screen active">
     <div class="lobby-topbar">
+      <button id="btn-rules-lobby" class="btn btn-icon" title="Dice Forge Quick Rules">📖 Rules</button>
       <button id="btn-theme-lobby" class="btn btn-icon" title="Switch Light / Dark Theme">🌙 Dark Mode</button>
     </div>
     <div class="lobby-container">
@@ -87,11 +88,12 @@
           <span id="display-round">Rd 1/9</span>
           <span class="dot-sep">•</span>
           <span id="display-active-hero" class="active-hero-text">Hero 1</span>
-          <button id="btn-next-turn" class="btn-inline-next" title="Advance to Next Player's Turn">Next ➡️</button>
+          <button id="btn-next-turn" class="btn-inline-next" title="Advance to Next Player's Turn">Next Turn ➡️</button>
         </div>
       </div>
 
       <div class="topbar-right">
+        <button id="btn-open-rules" class="btn btn-outline btn-sm" title="Quick Rules & Reference">📖 Rules</button>
         <button id="btn-undo" class="btn btn-ghost btn-sm" disabled title="Undo last action">↩️ Undo</button>
         <button id="btn-theme-toggle" class="btn btn-ghost btn-sm" title="Toggle Light / Dark Theme">🌙</button>
         <button id="btn-setup-config" class="btn btn-ghost btn-sm" title="Game Setup & Reset">⚙️</button>
@@ -103,9 +105,9 @@
     <div class="action-nav-bar">
       <div class="action-nav-inner">
         <!-- Big Primary Roll All Button -->
-        <button id="btn-divine-blessing" class="btn btn-blessing">
-          <span class="blessing-icon">⚡</span>
-          <span>Divine Blessing <strong>(Roll All)</strong></span>
+        <button id="btn-divine-blessing" class="btn btn-blessing" title="Start of every turn: all players roll both dice!">
+          <span class="blessing-icon">🎲</span>
+          <span><strong>Roll Everyone's Dice</strong> <small>(Divine Blessing)</small></span>
           <span id="blessing-count-badge" class="badge-pill">1x</span>
         </button>
 
@@ -229,6 +231,114 @@
         </div>
 
         <div id="forge-error" class="alert-error hidden"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- QUICK RULES & FAQ MODAL -->
+  <div id="rules-modal" class="modal-backdrop hidden">
+    <div class="modal-dialog modal-xl">
+      <div class="modal-header">
+        <div>
+          <h2>📖 Dice Forge Quick Rules &amp; Reference</h2>
+          <p class="modal-subtitle">Everything you need at the table</p>
+        </div>
+        <button id="btn-close-rules" class="btn-close" aria-label="Close">✕</button>
+      </div>
+      <div class="modal-body rules-content">
+        <div class="rules-grid">
+          <div class="rule-card">
+            <h3>⚡ 1. Turn Sequence (Every Player's Turn)</h3>
+            <ol class="rules-list">
+              <li><strong>Divine Blessing (Roll All):</strong> At the start of <em>every</em> player's turn, <strong>all players roll both of their dice simultaneously</strong> and gain the rolled resources. <em>(In a 2-player game, everyone rolls twice at the start of every turn!)</em></li>
+              <li><strong>Reinforcements (Optional):</strong> The active player may activate any owned Heroic Feat cards with a ↻ Reinforcement icon (like <em>Guardian Owl</em>, <em>Silver Hind</em>, or <em>The Elder</em>) once each.</li>
+              <li><strong>Main Action (Pick 1):</strong>
+                <ul>
+                  <li><strong>A) Make an Offering (Forge):</strong> Spend Gold to buy 1 or more faces from the Sanctuary and immediately forge them onto your dice.</li>
+                  <li><strong>B) Perform a Heroic Feat (Islands):</strong> Spend Sun or Moon Shards to move your Hero pawn to an Island portal, take the card, and resolve its immediate effect.</li>
+                </ul>
+              </li>
+              <li><strong>Extra Action (Optional):</strong> Spend <strong>2 Sun Shards</strong> (🟠 2) to take one additional Main Action (Forge again OR buy another Heroic Feat card).</li>
+            </ol>
+          </div>
+
+          <div class="rule-card">
+            <h3>📦 2. Resource Limits &amp; Common Questions</h3>
+            <ul class="rules-list">
+              <li><strong>Do resources reset to 0 if you overflow?</strong> <strong>No!</strong> Your base caps are <strong>12 Gold</strong>, <strong>6 Sun</strong>, and <strong>6 Moon</strong>. If you roll more while at your cap, you stay at the cap and any excess is simply lost.</li>
+              <li><strong>Why does the Glory track go to 99?</strong> On the physical board, when you pass 100 Glory (Victory Points), you take a <code>+100</code> token and wrap your green cube around from 0. In this app, Glory counts past 100 automatically.</li>
+              <li><strong>What is a Blacksmith's Chest?</strong> The cardboard extender tile acquired from the 1-Moon Island card. Each Chest permanently increases your max storage by <strong>+4 Gold, +3 Sun, and +3 Moon</strong> (found under <em>⚒️ Hero Buffs</em>).</li>
+              <li><strong>Endgame Card Scoring:</strong> Physical Heroic Feat cards stay face-down in front of you during the game and their printed Glory values are tallied up at the end of the final round.</li>
+            </ul>
+          </div>
+
+          <div class="rule-card">
+            <h3>🔨 3. Forging &amp; Island Ousting Rules</h3>
+            <ul class="rules-list">
+              <li><strong>Sanctuary Pool Rule:</strong> When you take the Forge action, you can buy multiple die faces at once, <strong>but each face must come from a different Sanctuary pool/tray</strong> (e.g., you cannot buy two identical <code>3 Gold</code> faces in the same action, unless you pay 2 Sun Shards to take a second main action).</li>
+              <li><strong>Permanent Removal:</strong> Once a face is pried off your die, it is out of the game and cannot be re-forged later.</li>
+              <li><strong>Ousting Another Hero on the Board:</strong> When you move your Hero pawn to an Island portal that already has another player's pawn on it, that player's pawn is pushed back to the central starting portal and they immediately get a free <strong>2-die roll (Divine Blessing)</strong>!</li>
+            </ul>
+          </div>
+
+          <div class="rule-card">
+            <h3>✨ 4. Special Dice Faces &amp; Cards</h3>
+            <ul class="rules-list">
+              <li><strong>×3 Multiplier (Helmet of Invisibility):</strong> Triples the reward of your <em>other</em> die when rolling both dice together. (Has no effect if rolled on a 1-die Minor Blessing or if you roll two <code>×3</code> faces).</li>
+              <li><strong>🪞 Mirror of the Abyss:</strong> Copies the effect of any one face currently showing on an opponent's die.</li>
+              <li><strong>🛡️ Guardian's Shield:</strong> Has a primary resource and a <code>5 Glory</code> corner. If your <em>other</em> rolled die also shows that same resource type, you get <strong>5 Glory</strong> instead of the resource!</li>
+              <li><strong>⛵ Celestial Ship:</strong> Choose either <strong>+2 Gold</strong> OR immediately forge a face from the Sanctuary at a <strong>-2 Gold discount</strong>.</li>
+              <li><strong>🐗 Tenacious Boar:</strong> Forged onto an <em>opponent's</em> die and can never be replaced. Whenever they roll it, they get 1 Gold/Sun/Moon and the card owner gets 1 Sun, 1 Moon, or 3 Glory!</li>
+              <li><strong>🐂 Minotaur Card:</strong> All opponents roll both dice and <em>lose</em> the rolled resources (or Glory) instead of gaining them.</li>
+            </ul>
+          </div>
+        </div>
+
+        <div class="rule-card">
+          <h3>👥 5. Setup by Player Count</h3>
+          <table class="rules-table">
+            <thead>
+              <tr>
+                <th>Setting</th>
+                <th>2 Players</th>
+                <th>3 Players</th>
+                <th>4 Players</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><strong>Total Rounds</strong></td>
+                <td>9 Rounds</td>
+                <td>10 Rounds</td>
+                <td>9 Rounds</td>
+              </tr>
+              <tr>
+                <td><strong>Start-of-Turn Rolls (Divine Blessings)</strong></td>
+                <td><strong>2×</strong> per turn</td>
+                <td>1× per turn</td>
+                <td>1× per turn</td>
+              </tr>
+              <tr>
+                <td><strong>Sanctuary Faces per Pool</strong></td>
+                <td>2 faces per pool</td>
+                <td>4 faces per pool</td>
+                <td>4 faces per pool</td>
+              </tr>
+              <tr>
+                <td><strong>Physical Feat Cards per Stack</strong></td>
+                <td>2 cards per stack</td>
+                <td>3 cards per stack</td>
+                <td>4 cards per stack</td>
+              </tr>
+              <tr>
+                <td><strong>Starting Gold (by turn order)</strong></td>
+                <td>3G / 2G</td>
+                <td>3G / 2G / 1G</td>
+                <td>3G / 2G / 1G / 0G</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
       </div>
     </div>
   </div>

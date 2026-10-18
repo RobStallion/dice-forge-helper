@@ -16,9 +16,11 @@ const state = {
   viewMode: 'focused', // 'focused' | 'table'
   setupPlayerCountChoice: 4,
   theme: 'light',
-  // Track last seen roll timestamps per player so we know when to trigger the suspenseful roll animation
   seenRollTimestamps: {},
-  rollingPlayers: {}, // playerId -> { mode, lightTempFace, darkTempFace, landed }
+  // playerId -> { mode, lightTempFace, darkTempFace, preRollResources, landed }
+  rollingPlayers: {},
+  // playerId -> boolean (preserves open state of the extras <details> drawer across re-renders)
+  openExtrasDrawers: {},
   forgeModal: {
     isOpen: false,
     playerId: null,
@@ -28,7 +30,7 @@ const state = {
   }
 };
 
-// Web Audio synthesizer for tactile dice ticks & landing chime (no external audio files needed)
+// Web Audio synthesizer for tactile dice ticks & landing chime
 let audioCtx = null;
 function playDiceSound(type = 'tick') {
   try {
@@ -97,6 +99,21 @@ initTheme();
 
 document.getElementById('btn-theme-toggle')?.addEventListener('click', toggleTheme);
 document.getElementById('btn-theme-lobby')?.addEventListener('click', toggleTheme);
+
+// Quick Rules Modal
+const rulesModal = document.getElementById('rules-modal');
+document.getElementById('btn-open-rules')?.addEventListener('click', () => {
+  rulesModal.classList.remove('hidden');
+});
+document.getElementById('btn-rules-lobby')?.addEventListener('click', () => {
+  rulesModal.classList.remove('hidden');
+});
+document.getElementById('btn-close-rules')?.addEventListener('click', () => {
+  rulesModal.classList.add('hidden');
+});
+rulesModal?.addEventListener('click', (e) => {
+  if (e.target === rulesModal) rulesModal.classList.add('hidden');
+});
 
 // DOM Elements
 const lobbyScreen = document.getElementById('lobby-screen');
@@ -252,8 +269,8 @@ function enterGameScreen(roomCode) {
   window.history.replaceState({}, '', url.toString());
 }
 
-// Suspenseful Dice Roll Animation Controller
-function triggerSuspenseRollAnimation(playersWithNewRolls) {
+// Suspenseful Dice Roll Animation Controller (holds resource totals until dice land!)
+function triggerSuspenseRollAnimation(playersWithNewRolls, oldResourcesByPlayerId) {
   const stepDelays = [90, 190, 300, 430, 580, 760, 960];
 
   playersWithNewRolls.forEach((player) => {
@@ -261,6 +278,7 @@ function triggerSuspenseRollAnimation(playersWithNewRolls) {
       mode: player.lastRoll.mode || 'both',
       lightTempFace: player.lightDie[Math.floor(Math.random() * 6)],
       darkTempFace: player.darkDie[Math.floor(Math.random() * 6)],
+      preRollResources: oldResourcesByPlayerId[player.id] || { ...player.resources },
       landed: false
     };
   });
@@ -278,7 +296,7 @@ function triggerSuspenseRollAnimation(playersWithNewRolls) {
     }, delay);
   });
 
-  // Final landing at 1150ms
+  // Final landing at 1150ms — now reveal the updated resource totals and landed faces!
   setTimeout(() => {
     playDiceSound('land');
     playersWithNewRolls.forEach((player) => {
@@ -298,6 +316,21 @@ function triggerSuspenseRollAnimation(playersWithNewRolls) {
 // Receive live room state
 socket.on('room_state', (roomData) => {
   const isFirstLoad = !state.room;
+
+  // Snapshot previous player resources BEFORE updating state.room so rolling animations don't spoil the result
+  const oldResourcesByPlayerId = {};
+  if (state.room && state.room.players) {
+    state.room.players.forEach((oldP) => {
+      // If already mid-roll, keep the original preRollResources
+      const existingAnim = state.rollingPlayers[oldP.id];
+      if (existingAnim && !existingAnim.landed && existingAnim.preRollResources) {
+        oldResourcesByPlayerId[oldP.id] = { ...existingAnim.preRollResources };
+      } else {
+        oldResourcesByPlayerId[oldP.id] = { ...oldP.resources };
+      }
+    });
+  }
+
   state.room = roomData;
 
   if (!state.focusedPlayerId && roomData.players.length > 0) {
@@ -322,7 +355,7 @@ socket.on('room_state', (roomData) => {
   });
 
   if (newlyRolledPlayers.length > 0) {
-    triggerSuspenseRollAnimation(newlyRolledPlayers);
+    triggerSuspenseRollAnimation(newlyRolledPlayers, oldResourcesByPlayerId);
   }
 
   renderAll();
@@ -533,8 +566,17 @@ function getFaceIcon(face) {
   return icons.join('') || '🎲';
 }
 
+function getDisplayedResources(player) {
+  const anim = state.rollingPlayers[player.id];
+  if (anim && !anim.landed && anim.preRollResources) {
+    return anim.preRollResources;
+  }
+  return player.resources;
+}
+
 function getPlayerCaps(player) {
-  const chests = Number(player.resources.chests) || 0;
+  const res = getDisplayedResources(player);
+  const chests = Number(res.chests) || 0;
   return {
     gold: 12 + chests * 4,
     sun: 6 + chests * 3,
@@ -573,8 +615,11 @@ function renderAll() {
 function renderHeroSwitcherPills(room) {
   heroSwitcherPills.innerHTML = '';
   room.players.forEach((p, idx) => {
-    const totalVP = (p.resources.glory || 0) + (p.resources.cardGlory || 0);
-    const hasChoice = (p.lastRoll?.pendingChoices || []).length > 0;
+    const res = getDisplayedResources(p);
+    const anim = state.rollingPlayers[p.id];
+    const isRolling = anim && !anim.landed;
+    const totalVP = res.glory || 0;
+    const hasChoice = !isRolling && (p.lastRoll?.pendingChoices || []).length > 0;
     const isFocused = state.viewMode === 'focused' && p.id === state.focusedPlayerId;
     const btn = document.createElement('button');
     btn.className = `hero-pill ${isFocused ? 'active' : ''}`;
@@ -616,8 +661,9 @@ function renderHeroesMain(room) {
 
   playersToShow.forEach((player) => {
     const isTurn = room.players[room.activePlayerIndex]?.id === player.id;
+    const res = getDisplayedResources(player);
     const caps = getPlayerCaps(player);
-    const totalVP = (player.resources.glory || 0) + (player.resources.cardGlory || 0);
+    const totalVP = res.glory || 0;
     const totalStock = (room.sanctuary || []).reduce((acc, s) => acc + (s.remaining || 0), 0);
 
     // Check if this player is currently in the middle of the suspenseful roll animation
@@ -659,12 +705,14 @@ function renderHeroesMain(room) {
             .map(
               (ch) => `
               <div class="choice-item">
-                <span class="choice-prompt">✨ ${escapeHtml(ch.dieLabel)} (${escapeHtml(ch.faceName)}) — Pick reward:</span>
+                <span class="choice-prompt">${ch.isMinotaur ? '🐂 Minotaur Loss' : '✨'} ${escapeHtml(
+                ch.dieLabel
+              )} (${escapeHtml(ch.faceName)}) — ${ch.isMinotaur ? 'Pick resource to lose:' : 'Pick reward:'}</span>
                 <div class="choice-options">
                   ${ch.options
                     .map(
                       (opt, optIdx) => `
-                      <button class="btn btn-gold btn-sm btn-resolve-choice"
+                      <button class="btn ${ch.isMinotaur ? 'btn-danger' : 'btn-gold'} btn-sm btn-resolve-choice"
                         data-player="${player.id}"
                         data-choice="${ch.choiceId}"
                         data-opt="${optIdx}">
@@ -682,6 +730,8 @@ function renderHeroesMain(room) {
       `;
     }
 
+    const isExtrasOpen = !!state.openExtrasDrawers[player.id];
+
     const card = document.createElement('article');
     card.className = `hero-card ${isTurn ? 'is-active-turn' : ''}`;
 
@@ -693,7 +743,7 @@ function renderHeroesMain(room) {
           <span class="hero-title">${escapeHtml(player.name)}</span>
           <button class="btn-rename" data-player="${player.id}" title="Rename Hero">✏️</button>
         </div>
-        <div class="hero-total-vp" title="Glory Track (${player.resources.glory}) + Feat Cards (${player.resources.cardGlory})">
+        <div class="hero-total-vp" title="Glory Points tracked during the game">
           🏆 ${totalVP} Glory
         </div>
       </div>
@@ -734,6 +784,9 @@ function renderHeroesMain(room) {
           <button class="btn btn-outline btn-sm btn-roll-player" data-player="${player.id}" data-mode="dark" data-reason="Minor Blessing">
             🌙 Dark Only
           </button>
+          <button class="btn btn-danger btn-sm btn-play-minotaur" data-player="${player.id}" title="Play Minotaur Card: All OTHER players roll both dice and lose the rolled resources!">
+            🐂 Play Minotaur
+          </button>
           <button class="btn btn-gold btn-sm btn-open-forge-die" data-player="${player.id}" data-die="light">
             🏛️ Forge Dice (${totalStock})
           </button>
@@ -744,10 +797,10 @@ function renderHeroesMain(room) {
 
       <!-- SECTION 2: STREAMLINED 4-RESOURCE INVENTORY -->
       <div class="inventory-grid">
-        ${renderInventoryCard(player, 'gold', '🟡 Gold', player.resources.gold, caps.gold, 'fill-gold', 'res-gold')}
-        ${renderInventoryCard(player, 'sun', '🟠 Sun', player.resources.sun, caps.sun, 'fill-sun', 'res-sun')}
-        ${renderInventoryCard(player, 'moon', '🟣 Moon', player.resources.moon, caps.moon, 'fill-moon', 'res-moon')}
-        ${renderInventoryCard(player, 'glory', '🟢 Glory', player.resources.glory, null, 'fill-glory', 'res-glory')}
+        ${renderInventoryCard(player, 'gold', '🟡 Gold', res.gold, caps.gold, 'fill-gold', 'res-gold')}
+        ${renderInventoryCard(player, 'sun', '🟠 Sun', res.sun, caps.sun, 'fill-sun', 'res-sun')}
+        ${renderInventoryCard(player, 'moon', '🟣 Moon', res.moon, caps.moon, 'fill-moon', 'res-moon')}
+        ${renderInventoryCard(player, 'glory', '🟢 Glory', res.glory, null, 'fill-glory', 'res-glory')}
       </div>
 
       <!-- SECTION 3: MY 12 DIE FACES -->
@@ -800,34 +853,27 @@ function renderHeroesMain(room) {
         </div>
       </div>
 
-      <!-- COLLAPSIBLE EXTRAS: Feat Card VP, Chests, Hammer, Minotaur -->
-      <details class="extras-drawer">
+      <!-- COLLAPSIBLE HERO BUFFS: Blacksmith's Chests & Hammer -->
+      <details class="extras-drawer" data-player="${player.id}" ${isExtrasOpen ? 'open' : ''}>
         <summary>
-          <span>🎒 Card Glory (${player.resources.cardGlory || 0} VP) • Chests (${player.resources.chests || 0}) • Hammer &amp; More</span>
+          <span>⚒️ Hero Buffs — Blacksmith's Chests (${res.chests || 0}) &amp; Hammer ${
+      res.hasHammer ? `(${res.hammerProgress || 0}/30)` : ''
+    }</span>
           <span>▾</span>
         </summary>
         <div class="extras-body">
-          <div class="extra-item">
-            <strong>🃏 Feat Cards VP: ${player.resources.cardGlory || 0}</strong>
-            <button class="btn btn-xs btn-outline btn-res-adj" data-player="${player.id}" data-res="cardGlory" data-delta="-2">-2</button>
-            <button class="btn btn-xs btn-outline btn-res-adj" data-player="${player.id}" data-res="cardGlory" data-delta="-1">-1</button>
-            <button class="btn btn-xs btn-outline btn-res-adj" data-player="${player.id}" data-res="cardGlory" data-delta="2">+2</button>
-            <button class="btn btn-xs btn-outline btn-res-adj" data-player="${player.id}" data-res="cardGlory" data-delta="4">+4</button>
-            <button class="btn btn-xs btn-outline btn-res-adj" data-player="${player.id}" data-res="cardGlory" data-delta="6">+6</button>
-          </div>
-
-          <div class="extra-item">
-            <span>📦 <strong>Chests: ${player.resources.chests || 0}</strong> <small>(Caps: ${caps.gold}G/${caps.sun}S/${caps.moon}M)</small></span>
-            <button class="btn btn-xs btn-outline btn-res-adj" data-player="${player.id}" data-res="chests" data-delta="-1">−</button>
+          <div class="extra-item" title="Each Blacksmith's Chest adds +4 Gold, +3 Sun, and +3 Moon capacity">
+            <span>📦 <strong>Blacksmith's Chests: ${res.chests || 0}</strong> <small>(Max Caps: ${caps.gold}G / ${caps.sun}S / ${caps.moon}M)</small></span>
+            <button class="btn btn-xs btn-outline btn-res-adj" data-player="${player.id}" data-res="chests" data-delta="-1">− Chest</button>
             <button class="btn btn-xs btn-outline btn-res-adj" data-player="${player.id}" data-res="chests" data-delta="1">+ Chest</button>
           </div>
 
           <div class="extra-item">
-            <button class="btn btn-xs ${player.resources.hasHammer ? 'btn-gold' : 'btn-outline'} btn-toggle-hammer" data-player="${player.id}">
-              🔨 Hammer ${player.resources.hasHammer ? `(${player.resources.hammerProgress || 0}/30)` : '(Enable)'}
+            <button class="btn btn-xs ${res.hasHammer ? 'btn-gold' : 'btn-outline'} btn-toggle-hammer" data-player="${player.id}">
+              🔨 Blacksmith's Hammer ${res.hasHammer ? `(${res.hammerProgress || 0}/30)` : '(Add Hammer)'}
             </button>
             ${
-              player.resources.hasHammer
+              res.hasHammer
                 ? `
                 <button class="btn btn-xs btn-outline btn-res-adj" data-player="${player.id}" data-res="hammerProgress" data-delta="1">+1G</button>
                 <button class="btn btn-xs btn-outline btn-res-adj" data-player="${player.id}" data-res="hammerProgress" data-delta="3">+3G</button>
@@ -835,12 +881,6 @@ function renderHeroesMain(room) {
               `
                 : ''
             }
-          </div>
-
-          <div class="extra-item">
-            <button class="btn btn-danger btn-xs btn-roll-minotaur" data-player="${player.id}" title="Roll both dice and subtract resources">
-              🐂 Minotaur Roll (-Resources)
-            </button>
           </div>
         </div>
       </details>
@@ -886,6 +926,13 @@ function renderDieFaceTile(player, dieType, face, slotIdx, isRolledActive) {
 }
 
 function bindHeroCardEvents() {
+  // Preserve open state of extras drawers
+  document.querySelectorAll('.extras-drawer').forEach((detailsEl) => {
+    detailsEl.addEventListener('toggle', () => {
+      state.openExtrasDrawers[detailsEl.dataset.player] = detailsEl.open;
+    });
+  });
+
   document.querySelectorAll('.btn-rename').forEach((btn) => {
     btn.onclick = () => {
       const playerId = btn.dataset.player;
@@ -913,14 +960,11 @@ function bindHeroCardEvents() {
     };
   });
 
-  document.querySelectorAll('.btn-roll-minotaur').forEach((btn) => {
+  document.querySelectorAll('.btn-play-minotaur').forEach((btn) => {
     btn.onclick = () => {
-      socket.emit('roll_player_dice', {
+      socket.emit('play_minotaur_card', {
         roomCode: state.room.code,
-        playerId: btn.dataset.player,
-        mode: 'both',
-        isMinotaur: true,
-        reason: 'Minotaur'
+        attackerPlayerId: btn.dataset.player
       });
     };
   });

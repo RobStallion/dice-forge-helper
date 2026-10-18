@@ -222,14 +222,19 @@ function resolveFaceEffect(room, player, face, dieLabel, multiplier, isMinotaur,
       multiplier,
       isMinotaur,
       isBoar: !!face.isBoar,
-      options: face.choices.map((c) => ({
-        label: multiplier > 1 ? `${c.label} (×${multiplier})` : c.label,
-        rewards: c.rewards,
-        note: c.note || null
-      }))
+      options: face.choices.map((c) => {
+        const baseLabel = isMinotaur ? c.label.replace(/\+/g, '−') : c.label;
+        return {
+          label: multiplier > 1 ? `${baseLabel} (×${multiplier})` : baseLabel,
+          rewards: c.rewards,
+          note: c.note || null
+        };
+      })
     });
     summaryParts.push(
-      face.isBoar
+      isMinotaur
+        ? `${face.name} (Choose resource to lose)`
+        : face.isBoar
         ? `🐗 Tenacious Boar! (Choose reward + Boar owner gets reward)`
         : `${face.name} (Choose reward)`
     );
@@ -466,6 +471,30 @@ io.on('connection', (socket) => {
       : `🎲 ${player.name} rolled ${mode === 'light' ? 'Light' : 'Dark'} Die`;
 
     addLog(room, `${label}: ${result.summary}`, 'roll');
+    broadcastRoom(roomCode);
+  });
+
+  // Play Minotaur Card: Attacker forces all OTHER players to roll both dice and lose resources
+  socket.on('play_minotaur_card', ({ roomCode, attackerPlayerId }) => {
+    const room = rooms.get(roomCode);
+    if (!room || room.players.length === 0) return;
+    const attacker = room.players.find((p) => p.id === attackerPlayerId);
+    const attackerName = attacker ? attacker.name : 'A Hero';
+
+    // Target all opponents (or if only 1 player is in the room during solo testing, target that player)
+    const targets =
+      room.players.length > 1
+        ? room.players.filter((p) => p.id !== attackerPlayerId)
+        : room.players;
+
+    saveUndoSnapshot(room, `${attackerName} Played Minotaur`);
+    const summaries = [];
+    for (const target of targets) {
+      const result = rollSinglePlayerDice(room, target, 'both', true);
+      summaries.push(`${target.name}: ${result.summary}`);
+    }
+
+    addLog(room, `🐂 ${attackerName} played Minotaur! Opponents roll & lose: ${summaries.join(' | ')}`, 'roll');
     broadcastRoom(roomCode);
   });
 
